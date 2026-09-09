@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Newsquawk Grammar Checker</title>
+    <meta charset="UTF-8">
+    <meta http-equiv="refresh" content="10">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 40px 20px;
+            max-width: 1100px;
+            margin: auto;
+            position: relative;
+            background-color: #121212;
+            color: #e0e0e0;
+        }
+
+        .light-mode {
+            background-color: #eaeaea;
+            color: #1a1a1a;
+        }
+
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        #clock {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 14px;
+            font-family: monospace;
+        }
+
+        .mode-toggle {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            padding: 4px 10px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        /* Table styling */
+        table {
+            width: 100%;
+            margin-top: 10px;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            border: 1px solid #444;
+            padding: 10px;
+            text-align: left;
+            font-family: "Courier New", monospace;
+            font-size: 14px;
+        }
+
+        th {
+            background-color: #222;
+            color: #ddd;
+        }
+
+        td {
+            background-color: #181818;
+        }
+
+        /* Column widths */
+        th:nth-child(1), td:nth-child(1) {
+            width: 15%;
+        }
+
+        th:nth-child(2), td:nth-child(2),
+        th:nth-child(3), td:nth-child(3) {
+            width: 42.5%;
+        }
+
+        /* Cell content styling */
+        .cell-content {
+            white-space: pre-wrap;
+            display: block;
+            margin: 0;
+            padding: 0;
+            max-width: 100%;
+            overflow-x: auto;
+            word-wrap: break-word;
+        }
+
+        /* Prevent images from breaking table layout */
+        td img {
+            max-width: 100%;
+            height: auto;
+            display: block;
+        }
+
+
+        .light-mode th {
+            background-color: #dcdcdc;
+            color: #1a1a1a;
+            border: 1px solid #bbb;
+        }
+
+        .light-mode td {
+            background-color: #f4f4f4;
+            border: 1px solid #bbb;
+        }
+
+
+        span[style*="color:red"] {
+            color: #ff6b6b;
+            font-weight: bold;
+        }
+
+        .tick {
+            color: #8f8;
+            margin: 0;
+            padding: 0;
+        }
+
+        .light-mode .tick {
+            color: #006400; /* dark green for light backgrounds */
+        }
+
+
+        .notice {
+            background-color: #333;
+            border: 1px solid #555;
+            color: #ccc;
+            padding: 15px;
+            margin-top: 20px;
+        }
+
+        .light-mode .notice {
+            background-color: #fff3cd;
+            border: 1px solid #ffeeba;
+            color: #856404;
+        }
+
+        h3 {
+            margin-top: 40px;
+            color: #ffd700;
+        }
+
+        .top-banner {
+            padding: 12px;
+            margin-top: 20px;
+            border-left: 5px solid;
+        }
+
+        .clean-banner {
+            background-color: #2a2a2a;
+            color: #8f8;
+            border-color: green;
+        }
+
+        .error-banner {
+            background-color: #2a2a2a;
+            color: #ffcc00;
+            border-color: red;
+        }
+
+        /* Light mode overrides */
+        .light-mode .clean-banner {
+            background-color: #d9f2d9;
+            color: #006400;
+            border-color: #28a745;
+        }
+
+
+        .light-mode .error-banner {
+            background-color: #fff3cd;
+            color: #856404;
+            border-color: #ffc107;
+        }
+
+    </style>
+</head>
+<body id="body">
+    <div id="clock">Loading UK time…</div>
+    <button class="mode-toggle" onclick="toggleMode()">Toggle Mode</button>
+    <h1>🧠 Newsquawk Spelling + Grammar Checker</h1>
+
+    {% if uncorrected_rows %}
+        <div class="top-banner error-banner" id="error-banner">
+            ⚠️ <strong>{{ uncorrected_rows|length }} headline{{ 's' if uncorrected_rows|length > 1 else '' }} still contain uncorrected errors.</strong>
+            <button onclick="dismissErrors()" style="margin-left: 20px; padding: 4px 8px; font-size: 12px;">Dismiss All</button>
+            <ul style="margin-top: 6px; padding-left: 16px;">
+                {% for row in uncorrected_rows %}
+                    <li>{{ row.section }} (🕒 {{ row.timestamp.strftime('%Y-%m-%d %H:%M:%S') }})</li>
+                {% endfor %}
+            </ul>
+        </div>
+    {% else %}
+        <div class="top-banner clean-banner">
+            ✅ <strong>No corrections needed — all headlines are clean.</strong>
+        </div>
+    {% endif %}
+
+
+    {% if rows %}
+
+        {% for row in rows %}
+            <h3>🕒 {{ row.timestamp.strftime("%Y-%m-%d %H:%M:%S") if row.timestamp else "No timestamp" }}</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Section</th>
+                        <th>Original (Highlighted)</th>
+                        <th>Corrected</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for section in ["Headline", "Reaction", "Analysis", "Body"] %}
+                        {% if row.get(section) and row[section].get("highlighted") %}
+                        <tr>
+                            <td><strong>{{ section }}</strong></td>
+                            <td>{{ row[section].highlighted|safe }}</td>
+                            <td>
+                                {% if row[section].get("corrected") == "✅ No correction needed." %}
+                                    <span class="tick">✅ No correction needed.</span>
+                                {% else %}
+                                    {{ row[section].corrected | safe }}
+                                    <button onclick="dismissSingle('{{ row.id }}', '{{ section }}')" style="margin-left: 10px; font-size: 12px;">Dismiss</button>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endif %}
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% endfor %}
+    {% else %}
+        <div class="notice">
+            <p><strong>No headlines yet — running…</strong></p>
+            <ul>
+                <li>Newsquawk feed hasn't published anything new</li>
+                <li>All fields were empty or skipped</li>
+                <li>OpenAI skipped or errored</li>
+            </ul>
+            <p>🖥️ Check your terminal logs if needed.</p>
+        </div>
+    {% endif %}
+
+    <script>
+        function updateClock() {
+            const now = new Date();
+            const options = {
+                timeZone: 'Europe/London',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                weekday: 'short',
+                year: 'numeric',
+                month: 'short',
+                day: '2-digit'
+            };
+            const formatter = new Intl.DateTimeFormat('en-GB', options);
+            document.getElementById('clock').innerText = formatter.format(now);
+        }
+
+        function toggleMode() {
+            const body = document.getElementById("body");
+            body.classList.toggle("light-mode");
+            const currentMode = body.classList.contains("light-mode") ? "light" : "dark";
+            localStorage.setItem("theme", currentMode);
+        }
+
+        function applySavedTheme() {
+            const savedTheme = localStorage.getItem("theme") || "dark";
+            if (savedTheme === "light") {
+                document.getElementById("body").classList.add("light-mode");
+            }
+        }
+
+        updateClock();
+        setInterval(updateClock, 1000);
+        applySavedTheme();
+    </script>
+    <script>
+        function dismissErrors() {
+            fetch("/dismiss", { method: "POST" })
+                .then(() => {
+                    const banner = document.getElementById("error-banner");
+                    if (banner) banner.style.display = "none";
+                    location.reload();  // Reload to reflect updates in UI
+                });
+        }
+    </script>
+    <script>
+        function dismissSingle(id, section) {
+            fetch("/dismiss", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ id: id, section: section })
+            }).then(() => {
+                location.reload();  // Refresh to show update
+            });
+        }
+    </script>
+
+</body>
+</html>

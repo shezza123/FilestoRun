@@ -1,0 +1,2260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Newsquawk | SpellCheck</title>
+    <meta charset="UTF-8">
+    <style>
+        :root {
+            --bg: #0b0e11;
+            --card-bg: #151921;
+            --border: #2b2f36;
+            --text-main: #e0e3e7;
+            --text-dim: #9299a3;
+            --accent: #f0b90b;
+            --error: #f6465d;
+            --success: #0ecb81;
+            --shadow: 0 8px 24px rgba(0,0,0,0.5);
+        }
+
+        .light-mode {
+            --bg: #f0f2f5;
+            --card-bg: #ffffff;
+            --border: #dee2e6;
+            --text-main: #1e2329;
+            --text-dim: #707a8a;
+            --shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background-color: var(--bg);
+            color: var(--text-main);
+            margin: 0;
+            padding-top: 80px;
+            transition: background 0.2s ease;
+        }
+
+        /* --- STICKY NAVBAR --- */
+        .navbar {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            height: 70px;
+            background: var(--card-bg);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 30px;
+            box-sizing: border-box;
+            z-index: 1000;
+            box-shadow: var(--shadow);
+        }
+
+        .brand { font-weight: 800; font-size: 1.1rem; color: var(--accent); letter-spacing: 1px; }
+        .controls-group { display: flex; align-items: center; gap: 15px; }
+        .clock-display { font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; color: var(--text-dim); min-width: 160px; }
+
+        .btn {
+            background: var(--border);
+            color: var(--text-main);
+            border: none;
+            padding: 10px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            font-weight: 700;
+            line-height: 1.05;
+            white-space: nowrap;
+            word-break: normal;
+            overflow-wrap: normal;
+            flex: 0 0 auto;
+            transition: all 0.2s;
+        }
+        .btn:hover { background: #3e444e; transform: translateY(-1px); }
+        .btn-success { background: var(--success); color: white; }
+        .btn-error { background: var(--error); color: white; }
+
+        select, input[type="range"] {
+            background: var(--bg);
+            color: var(--text-main);
+            border: 1px solid var(--border);
+            padding: 8px;
+            border-radius: 6px;
+            outline: none;
+        }
+
+        .container { max-width: 1100px; margin: auto; padding: 20px; }
+
+        .banner {
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-left: 6px solid;
+            animation: fadeIn 0.5s ease;
+        }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .banner-error { background: rgba(246, 70, 93, 0.15); border-color: var(--error); color: #ff8a9a; }
+        .banner-clean { background: rgba(14, 203, 129, 0.1); border-color: var(--success); color: var(--success); }
+        .banner-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
+        .muted-chip { opacity: 0.9; font-size: 0.75rem; font-weight: 800; color: #f7c948; }
+
+        .news-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 24px;
+            margin-bottom: 30px;
+            box-shadow: var(--shadow);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            padding-bottom: 15px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 20px;
+            color: var(--text-dim);
+            font-size: 0.75rem;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .row-grid {
+            display: grid;
+            grid-template-columns: 120px minmax(0, 1.7fr) minmax(0, 1fr);
+            gap: 25px;
+            padding: 15px 0;
+            border-bottom: 1px solid rgba(128,128,128,0.05);
+        }
+
+        .card-layout {
+            display: grid;
+            grid-template-columns: minmax(0, 2.2fr) minmax(280px, 1fr);
+            gap: 20px;
+            align-items: start;
+        }
+
+        .context-panel {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 14px;
+            position: sticky;
+            top: 88px;
+        }
+
+        .row-grid > * { min-width: 0; }
+
+        .label { font-weight: 800; font-size: 0.65rem; text-transform: uppercase; color: var(--accent); letter-spacing: 0.5px; }
+        .content-area {
+            font-size: 0.95rem;
+            line-height: 1.6;
+            display: block;
+            width: 100%;
+            min-width: 0;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+        }
+
+        .text-block { white-space: pre-line; }
+
+        .content-area * {
+            max-width: 100%;
+            box-sizing: border-box;
+        }
+
+        .content-area [style*="width"] {
+            max-width: 100% !important;
+        }
+
+        .content-area img,
+        .content-area video,
+        .content-area iframe,
+        .content-area table {
+            max-width: 100% !important;
+        }
+
+        .content-area table {
+            display: block;
+            overflow-x: auto;
+            border-collapse: collapse;
+        }
+
+        .content-area td,
+        .content-area th {
+            white-space: normal;
+            word-break: break-word;
+        }
+
+        span[style*="color:red"] {
+            background: rgba(246, 70, 93, 0.25) !important;
+            color: #ffb3ba !important;
+            padding: 2px 4px !important;
+            border-radius: 4px !important;
+            font-weight: 700 !important;
+            border-bottom: 2px solid var(--error) !important;
+            display: inline-block;
+        }
+
+        .correction-list { color: var(--success); font-weight: 700; font-size: 0.9rem; margin-bottom: 10px; }
+        .issue-actions { margin-top: 10px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+        .issue-actions .btn {
+            min-width: 96px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .issue-card {
+            border: 1px solid rgba(14, 203, 129, 0.22);
+            border-radius: 10px;
+            padding: 10px;
+            margin-bottom: 10px;
+            background: rgba(14, 203, 129, 0.07);
+        }
+        .jump-focus {
+            outline: 2px solid var(--accent);
+            box-shadow: 0 0 0 4px rgba(240, 185, 11, 0.18);
+        }
+        .issue-row { color: var(--success); font-weight: 700; font-size: 0.9rem; }
+        .btn-secondary { background: #2f3640; color: #d5dbe3; }
+        .btn-secondary:hover { background: #404a56; }
+        .context-title { color: var(--accent); font-size: 0.76rem; font-weight: 800; letter-spacing: 0.4px; margin-bottom: 10px; }
+        .context-list { margin: 0; padding-left: 18px; color: var(--text-main); opacity: 0.95; }
+        .context-list li { margin-bottom: 8px; line-height: 1.45; }
+        .context-top-list { margin: 0; padding-left: 18px; max-height: 290px; overflow: auto; }
+        .context-top-list li { margin-bottom: 8px; line-height: 1.45; }
+        .context-subtitle { color: var(--text-dim); font-size: 0.68rem; font-weight: 800; letter-spacing: 0.35px; margin-bottom: 8px; }
+        .context-meta { font-size: 0.75rem; color: var(--text-dim); font-weight: 700; }
+        .context-sources { margin-top: 10px; font-size: 0.74rem; line-height: 1.45; color: var(--text-dim); }
+        .context-sources a { color: var(--accent); text-decoration: none; }
+        .context-sources a:hover { text-decoration: underline; }
+        .context-details { margin-top: 10px; }
+        .context-details summary {
+            cursor: pointer;
+            color: var(--accent);
+            font-size: 0.75rem;
+            font-weight: 800;
+            letter-spacing: 0.3px;
+        }
+        .context-section {
+            margin-top: 10px;
+            padding-top: 8px;
+            border-top: 1px solid rgba(255,255,255,0.05);
+        }
+        .context-section-title {
+            color: var(--text-dim);
+            font-size: 0.72rem;
+            font-weight: 800;
+            margin-bottom: 6px;
+        }
+        .context-source-list { margin: 8px 0 0 0; padding-left: 16px; }
+        .context-source-list li { margin-bottom: 6px; }
+        .context-progress-wrap { margin-top: 8px; }
+        .context-progress-track {
+            width: 100%;
+            height: 8px;
+            border-radius: 999px;
+            background: rgba(255,255,255,0.08);
+            overflow: hidden;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .context-progress-bar {
+            width: 20%;
+            height: 100%;
+            border-radius: 999px;
+            background: linear-gradient(90deg, rgba(240,185,11,0.35), rgba(240,185,11,0.9), rgba(240,185,11,0.35));
+            background-size: 160% 100%;
+            transition: width 0.6s ease;
+            animation: contextProgressShift 1.2s linear infinite;
+        }
+        .context-progress-bar.indeterminate {
+            width: 35%;
+            animation: contextProgressPulse 1.1s ease-in-out infinite;
+        }
+        .context-progress-meta {
+            margin-top: 6px;
+            color: var(--text-dim);
+            font-size: 0.68rem;
+            font-weight: 700;
+        }
+        @keyframes contextProgressShift {
+            from { background-position: 0% 0%; }
+            to { background-position: 160% 0%; }
+        }
+        @keyframes contextProgressPulse {
+            0% { transform: translateX(-55%); }
+            100% { transform: translateX(240%); }
+        }
+
+        .switch { position: relative; display: inline-block; width: 44px; height: 22px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #333; transition: .3s; border-radius: 20px;
+        }
+        input:checked + .slider { background-color: var(--success); }
+        .slider:before {
+            position: absolute; content: ""; height: 16px; width: 16px; left: 3px; bottom: 3px;
+            background-color: white; transition: .3s; border-radius: 50%;
+        }
+        input:checked + .slider:before { transform: translateX(22px); }
+
+        @media (max-width: 980px) {
+            body { padding-top: 140px; }
+
+            .navbar {
+                height: auto;
+                min-height: 70px;
+                padding: 12px 14px;
+                flex-wrap: wrap;
+                gap: 10px;
+            }
+
+            .controls-group {
+                width: 100%;
+                flex-wrap: wrap;
+                justify-content: flex-start;
+                gap: 10px;
+            }
+
+            .row-grid {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+
+            .card-layout {
+                grid-template-columns: 1fr;
+            }
+
+            .context-panel {
+                position: static;
+            }
+
+            .card-header {
+                flex-direction: column;
+                gap: 6px;
+            }
+        }
+
+        @media (max-width: 640px) {
+            body { padding-top: 170px; }
+            .container { padding: 12px; }
+            .news-card { padding: 16px; }
+            .label { font-size: 0.7rem; }
+            .btn { padding: 9px 12px; }
+        }
+
+        /* --- TERMINAL REVAMP OVERRIDES --- */
+        :root {
+            --bg: #070a0f;
+            --bg-glow: radial-gradient(circle at top left, rgba(240, 185, 11, 0.14), transparent 34%), radial-gradient(circle at 80% 0%, rgba(14, 203, 129, 0.08), transparent 28%);
+            --card-bg: rgba(15, 20, 29, 0.88);
+            --card-bg-strong: #111823;
+            --border: rgba(139, 152, 174, 0.18);
+            --border-strong: rgba(240, 185, 11, 0.28);
+            --text-main: #eef3f8;
+            --text-dim: #8f9bad;
+            --text-soft: #b7c1cf;
+            --accent: #f0b90b;
+            --accent-soft: rgba(240, 185, 11, 0.12);
+            --error: #ff5f73;
+            --error-soft: rgba(255, 95, 115, 0.12);
+            --success: #20d394;
+            --success-soft: rgba(32, 211, 148, 0.12);
+            --shadow: 0 18px 55px rgba(0, 0, 0, 0.38);
+        }
+
+        .light-mode {
+            --bg: #edf1f6;
+            --bg-glow: radial-gradient(circle at top left, rgba(240, 185, 11, 0.18), transparent 30%), radial-gradient(circle at 80% 0%, rgba(14, 203, 129, 0.12), transparent 28%);
+            --card-bg: rgba(255, 255, 255, 0.88);
+            --card-bg-strong: #ffffff;
+            --border: rgba(31, 42, 57, 0.12);
+            --border-strong: rgba(180, 128, 0, 0.28);
+            --text-main: #17202c;
+            --text-dim: #657183;
+            --text-soft: #3c4857;
+            --shadow: 0 18px 45px rgba(37, 50, 69, 0.12);
+        }
+
+        body {
+            background: var(--bg-glow), var(--bg);
+            padding-top: 92px;
+            font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        body:before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            background-image: linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+            background-size: 44px 44px;
+            mask-image: linear-gradient(to bottom, rgba(0,0,0,0.7), transparent 72%);
+            z-index: -1;
+        }
+
+        .navbar {
+            height: 76px;
+            background: rgba(9, 13, 20, 0.82);
+            backdrop-filter: blur(18px);
+            border-bottom: 1px solid var(--border);
+            box-shadow: 0 10px 35px rgba(0,0,0,0.28);
+            padding: 0 24px;
+        }
+
+        .light-mode .navbar { background: rgba(255, 255, 255, 0.84); }
+
+        .brand {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            color: var(--text-main);
+            letter-spacing: 0.08em;
+            line-height: 1.05;
+        }
+
+        .brand:after {
+            content: "Live grammar monitor";
+            color: var(--text-dim);
+            font-size: 0.62rem;
+            font-weight: 700;
+            letter-spacing: 0.06em;
+        }
+
+        .status-cluster {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-left: 18px;
+        }
+
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            border: 1px solid var(--border);
+            background: rgba(255,255,255,0.04);
+            color: var(--text-soft);
+            padding: 9px 12px;
+            border-radius: 999px;
+            font-size: 0.72rem;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+            white-space: nowrap;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--success);
+            box-shadow: 0 0 16px var(--success);
+        }
+
+        .status-pill.alert .status-dot {
+            background: var(--error);
+            box-shadow: 0 0 16px var(--error);
+        }
+
+        .clock-display {
+            min-width: 116px;
+            padding: 8px 10px;
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            background: rgba(255,255,255,0.04);
+            color: var(--text-soft);
+            text-align: center;
+        }
+
+        .controls-group { gap: 10px; }
+
+        .btn {
+            border: 1px solid var(--border);
+            background: rgba(255,255,255,0.055);
+            color: var(--text-main);
+            border-radius: 999px;
+            box-shadow: none;
+        }
+
+        .btn:hover {
+            background: rgba(240, 185, 11, 0.14);
+            border-color: var(--border-strong);
+            transform: translateY(-1px);
+        }
+
+        .btn-success {
+            background: rgba(32, 211, 148, 0.16);
+            border-color: rgba(32, 211, 148, 0.35);
+            color: #8ff0c9;
+        }
+
+        .btn-error {
+            background: rgba(255, 95, 115, 0.14);
+            border-color: rgba(255, 95, 115, 0.34);
+            color: #ffb2bc;
+        }
+
+        .btn-secondary {
+            background: rgba(143, 155, 173, 0.11);
+            border-color: var(--border);
+        }
+
+        select, input[type="range"] {
+            border-radius: 999px;
+            background: rgba(255,255,255,0.045);
+            border-color: var(--border);
+        }
+
+        .safe-terms-menu {
+            position: relative;
+            flex: 0 0 auto;
+        }
+
+        .safe-terms-menu summary {
+            list-style: none;
+            border: 1px solid var(--border);
+            background: rgba(255,255,255,0.055);
+            color: var(--text-main);
+            border-radius: 999px;
+            padding: 10px 16px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            font-weight: 700;
+            line-height: 1.05;
+            white-space: nowrap;
+        }
+
+        .safe-terms-menu summary::-webkit-details-marker { display: none; }
+
+        .safe-terms-menu summary:hover {
+            background: rgba(240, 185, 11, 0.14);
+            border-color: var(--border-strong);
+        }
+
+        .safe-terms-panel {
+            position: absolute;
+            top: calc(100% + 10px);
+            right: 0;
+            width: 300px;
+            padding: 14px;
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            background: rgba(9, 13, 20, 0.96);
+            box-shadow: var(--shadow);
+            z-index: 1200;
+        }
+
+        .light-mode .safe-terms-panel { background: rgba(255, 255, 255, 0.98); }
+
+        .safe-terms-title {
+            color: var(--text-dim);
+            font-size: 0.66rem;
+            font-weight: 900;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+
+        .safe-term-form {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        .safe-term-form input {
+            min-width: 0;
+            flex: 1;
+            background: rgba(255,255,255,0.045);
+            color: var(--text-main);
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            padding: 9px 11px;
+            outline: none;
+        }
+
+        .safe-term-search {
+            width: 100%;
+            background: rgba(255,255,255,0.045);
+            color: var(--text-main);
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            padding: 9px 11px;
+            outline: none;
+        }
+
+        .safe-term-check-result {
+            min-height: 18px;
+            margin: 6px 2px 10px;
+            color: var(--text-dim);
+            font-size: 0.72rem;
+            line-height: 1.35;
+        }
+
+        .safe-term-check-result.found { color: var(--success); }
+        .safe-term-check-result.not-found { color: var(--error); }
+
+        .safe-terms-list {
+            width: 100%;
+            min-height: 132px;
+            border-radius: 12px;
+        }
+
+        .safe-terms-status {
+            min-height: 18px;
+            margin-top: 8px;
+            color: var(--text-dim);
+            font-size: 0.72rem;
+            line-height: 1.35;
+        }
+
+        .safe-terms-status.error { color: var(--error); }
+
+        .soft-refreshing * {
+            animation: none !important;
+        }
+
+        .container {
+            max-width: 1380px;
+            padding: 22px 24px 44px;
+        }
+
+        .dashboard-shell {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 236px;
+            gap: 18px;
+            align-items: start;
+        }
+
+        .main-stream { min-width: 0; }
+
+        .issue-rail {
+            position: sticky;
+            top: 94px;
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            padding: 16px;
+            background: linear-gradient(180deg, rgba(255,255,255,0.065), rgba(255,255,255,0.025));
+            box-shadow: var(--shadow);
+        }
+
+        .rail-kicker {
+            color: var(--text-dim);
+            font-size: 0.66rem;
+            font-weight: 900;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+
+        .rail-number {
+            font-size: 2.35rem;
+            font-weight: 900;
+            letter-spacing: -0.05em;
+            color: var(--text-main);
+            line-height: 1;
+        }
+
+        .rail-copy {
+            color: var(--text-dim);
+            font-size: 0.78rem;
+            line-height: 1.45;
+            margin: 10px 0 14px;
+        }
+
+        .banner {
+            min-height: 76px;
+            border-radius: 18px;
+            padding: 18px 20px;
+            border: 1px solid var(--border);
+            border-left: 1px solid var(--border);
+            background: linear-gradient(135deg, rgba(255,255,255,0.075), rgba(255,255,255,0.026));
+            box-shadow: var(--shadow);
+        }
+
+        .banner-error {
+            border-color: rgba(255, 95, 115, 0.28);
+            background: linear-gradient(135deg, rgba(255, 95, 115, 0.16), rgba(255,255,255,0.03));
+            color: var(--text-main);
+        }
+
+        .banner-clean {
+            border-color: rgba(32, 211, 148, 0.26);
+            background: linear-gradient(135deg, rgba(32, 211, 148, 0.14), rgba(255,255,255,0.03));
+            color: var(--text-main);
+        }
+
+        .banner-title {
+            font-size: 0.82rem;
+            text-transform: uppercase;
+            letter-spacing: 0.11em;
+            color: var(--text-dim);
+            font-weight: 900;
+        }
+
+        .banner-main {
+            margin-top: 4px;
+            font-size: 1.12rem;
+            color: var(--text-main);
+            font-weight: 850;
+        }
+
+        .news-card {
+            position: relative;
+            background: linear-gradient(180deg, rgba(255,255,255,0.065), rgba(255,255,255,0.025)), var(--card-bg);
+            border-color: var(--border);
+            border-radius: 20px;
+            padding: 0;
+            overflow: hidden;
+        }
+
+        .news-card:before {
+            content: "";
+            position: absolute;
+            inset: 0 auto 0 0;
+            width: 3px;
+            background: linear-gradient(to bottom, var(--accent), rgba(240,185,11,0.05));
+            opacity: 0.65;
+        }
+
+        .card-header {
+            padding: 16px 20px;
+            margin-bottom: 0;
+            background: rgba(0,0,0,0.12);
+            border-bottom-color: var(--border);
+            color: var(--text-dim);
+        }
+
+        .card-layout {
+            grid-template-columns: minmax(0, 2.5fr) minmax(310px, 0.95fr);
+            padding: 18px 20px 20px;
+        }
+
+        .row-grid {
+            grid-template-columns: 104px minmax(0, 1.8fr) minmax(260px, 0.9fr);
+            gap: 18px;
+            padding: 14px 0;
+            border-bottom: 1px solid rgba(139, 152, 174, 0.09);
+        }
+
+        .row-grid:first-child .content-area {
+            font-size: 1.04rem;
+            font-weight: 720;
+        }
+
+        .label {
+            color: var(--accent);
+            background: var(--accent-soft);
+            border: 1px solid rgba(240,185,11,0.18);
+            width: fit-content;
+            height: fit-content;
+            padding: 6px 9px;
+            border-radius: 999px;
+        }
+
+        .content-area {
+            color: var(--text-main);
+            line-height: 1.65;
+        }
+
+        .text-block { color: var(--text-soft); }
+
+        span[style*="color:red"] {
+            background: rgba(255, 95, 115, 0.15) !important;
+            color: #ffd3d8 !important;
+            border: 1px solid rgba(255, 95, 115, 0.38) !important;
+            border-bottom: 1px solid rgba(255, 95, 115, 0.7) !important;
+            box-shadow: 0 0 0 3px rgba(255, 95, 115, 0.055) !important;
+        }
+
+        .issue-card {
+            background: linear-gradient(135deg, rgba(255, 95, 115, 0.12), rgba(255,255,255,0.035));
+            border-color: rgba(255, 95, 115, 0.24);
+            border-radius: 14px;
+        }
+
+        .issue-row {
+            color: var(--text-main);
+            font-size: 0.88rem;
+        }
+
+        .correction-list { color: #9af3ce; }
+
+        .context-panel {
+            top: 96px;
+            background: linear-gradient(180deg, rgba(240,185,11,0.08), rgba(255,255,255,0.025));
+            border-color: var(--border);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+        }
+
+        .context-title {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: var(--text-main);
+        }
+
+        .context-title:after {
+            content: "CTX";
+            color: var(--accent);
+            border: 1px solid rgba(240,185,11,0.25);
+            border-radius: 999px;
+            padding: 3px 7px;
+            font-size: 0.62rem;
+        }
+
+        .context-top-list, .context-list {
+            color: var(--text-soft);
+        }
+
+        .context-details summary { color: var(--accent); }
+
+        .muted-chip {
+            display: inline-flex;
+            width: fit-content;
+            border: 1px solid rgba(240,185,11,0.24);
+            border-radius: 999px;
+            padding: 4px 8px;
+            background: rgba(240,185,11,0.09);
+        }
+
+        @media (max-width: 1180px) {
+            .dashboard-shell { grid-template-columns: 1fr; }
+            .issue-rail { position: static; display: none; }
+            .card-layout { grid-template-columns: 1fr; }
+        }
+
+        @media (max-width: 980px) {
+            body { padding-top: 154px; }
+            .navbar { align-items: flex-start; }
+            .status-cluster { order: 3; margin-left: 0; width: 100%; overflow-x: auto; padding-bottom: 2px; }
+            .row-grid { grid-template-columns: 1fr; }
+        }
+
+        @media (max-width: 640px) {
+            body { padding-top: 202px; }
+            .navbar { padding: 12px; }
+            .controls-group { gap: 8px; }
+            .clock-display { min-width: 102px; }
+            .banner { align-items: flex-start; gap: 14px; }
+            .banner-actions { justify-content: flex-start; }
+            .card-layout { padding: 14px; }
+            .card-header { padding: 14px; }
+        }
+
+        /* --- READABILITY PASS: clear dark default, light only on toggle --- */
+        :root {
+            --bg: #0e1520;
+            --bg-glow: radial-gradient(circle at 15% 0%, rgba(76, 115, 255, 0.18), transparent 28%), radial-gradient(circle at 82% 4%, rgba(240, 185, 11, 0.12), transparent 24%), linear-gradient(180deg, #111a27 0%, #0e1520 48%, #0a1018 100%);
+            --card-bg: #151f2c;
+            --card-bg-strong: #192433;
+            --border: #2a3748;
+            --border-strong: #46576d;
+            --text-main: #f4f7fb;
+            --text-dim: #9aa8ba;
+            --text-soft: #d7dee8;
+            --accent: #f0b90b;
+            --accent-soft: rgba(240, 185, 11, 0.14);
+            --error: #ff5a70;
+            --error-soft: rgba(255, 90, 112, 0.14);
+            --success: #2bd99f;
+            --success-soft: rgba(43, 217, 159, 0.14);
+            --shadow: 0 18px 42px rgba(0, 0, 0, 0.28);
+        }
+
+        .light-mode {
+            --bg: #eef2f7;
+            --bg-glow: linear-gradient(180deg, #f7f9fc 0%, #eef2f7 42%, #e8edf5 100%);
+            --card-bg: #ffffff;
+            --card-bg-strong: #ffffff;
+            --border: #d9e1eb;
+            --border-strong: #b9c6d6;
+            --text-main: #16202e;
+            --text-dim: #667386;
+            --text-soft: #293647;
+            --shadow: 0 14px 36px rgba(30, 45, 66, 0.10);
+        }
+
+        body {
+            background: var(--bg-glow);
+            color: var(--text-main);
+            font-size: 16px;
+        }
+
+        body:before { display: none; }
+
+        .navbar {
+            background: rgba(13, 20, 31, 0.94);
+            border-bottom: 1px solid #2a3748;
+            box-shadow: 0 8px 28px rgba(0, 0, 0, 0.24);
+        }
+
+        .brand {
+            color: #f4f7fb;
+            letter-spacing: 0.04em;
+        }
+
+        .brand:after { color: #9aa8ba; }
+
+        .status-pill,
+        .clock-display,
+        select,
+        input[type="range"] {
+            background: #182332;
+            color: #e8edf5;
+            border-color: #314155;
+        }
+
+        .status-pill { font-size: 0.76rem; }
+
+        .btn {
+            background: #202c3b;
+            color: #f3f6fa;
+            border-color: #35465a;
+            font-weight: 800;
+        }
+
+        .btn:hover {
+            background: #263548;
+            border-color: #5b708c;
+        }
+
+        .btn-success {
+            background: rgba(43, 217, 159, 0.14);
+            border-color: rgba(43, 217, 159, 0.38);
+            color: #9af4d2;
+        }
+
+        .btn-error {
+            background: rgba(255, 90, 112, 0.14);
+            border-color: rgba(255, 90, 112, 0.38);
+            color: #ffc0c8;
+        }
+
+        .container { max-width: 1500px; }
+
+        .dashboard-shell {
+            grid-template-columns: minmax(0, 1fr) 220px;
+            gap: 22px;
+        }
+
+        .banner {
+            background: #151f2c;
+            border-color: #2a3748;
+            box-shadow: var(--shadow);
+        }
+
+        .banner-clean {
+            background: linear-gradient(135deg, rgba(43, 217, 159, 0.14), #151f2c);
+            border-color: rgba(43, 217, 159, 0.30);
+        }
+
+        .banner-error {
+            background: linear-gradient(135deg, rgba(255, 90, 112, 0.16), #151f2c);
+            border-color: rgba(255, 90, 112, 0.34);
+        }
+
+        .banner-title { color: #a7b4c6; }
+        .banner-main { color: #f4f7fb; }
+
+        .issue-rail {
+            background: #151f2c;
+            border-color: #2a3748;
+            box-shadow: var(--shadow);
+        }
+
+        .rail-number { color: #f4f7fb; }
+        .rail-copy { color: #a9b6c7; }
+
+        .news-card {
+            background: #151f2c;
+            border: 1px solid #2a3748;
+            border-radius: 16px;
+            box-shadow: var(--shadow);
+        }
+
+        .news-card:before {
+            width: 4px;
+            background: #f0b90b;
+            opacity: 1;
+        }
+
+        .card-header {
+            background: #111a26;
+            color: #a4b0c0;
+            border-bottom-color: #2a3748;
+            font-size: 0.82rem;
+        }
+
+        .card-layout {
+            grid-template-columns: minmax(0, 1.75fr) minmax(320px, 0.75fr);
+            gap: 26px;
+        }
+
+        .row-grid {
+            grid-template-columns: 128px minmax(0, 1.45fr) 220px;
+            gap: 22px;
+            border-bottom-color: #243244;
+        }
+
+        .label {
+            background: rgba(240, 185, 11, 0.14);
+            border-color: rgba(240, 185, 11, 0.38);
+            color: #ffd66b;
+            font-size: 0.72rem;
+        }
+
+        .content-area {
+            color: #edf2f8;
+            font-size: 1rem;
+            line-height: 1.72;
+        }
+
+        .text-block {
+            color: #e7edf6;
+            font-weight: 600;
+        }
+
+        .row-grid:first-child .content-area {
+            font-size: 1.08rem;
+            font-weight: 700;
+        }
+
+        .issue-actions .btn {
+            min-width: 0;
+            padding: 9px 13px;
+        }
+
+        .issue-card {
+            background: rgba(255, 90, 112, 0.12);
+            border-color: rgba(255, 90, 112, 0.32);
+        }
+
+        .issue-row { color: #f4f7fb; }
+
+        .correction-list {
+            color: #9af4d2;
+            background: rgba(43, 217, 159, 0.11);
+            border: 1px solid rgba(43, 217, 159, 0.30);
+            border-radius: 12px;
+            padding: 9px 11px;
+            display: inline-block;
+        }
+
+        span[style*="color:red"] {
+            background: rgba(255, 90, 112, 0.18) !important;
+            color: #ffd6dc !important;
+            border-color: rgba(255, 90, 112, 0.55) !important;
+            box-shadow: none !important;
+        }
+
+        .context-panel {
+            background: #111a26;
+            border-color: #2a3748;
+            box-shadow: none;
+        }
+
+        .context-title { color: #f4f7fb; }
+        .context-meta,
+        .context-subtitle,
+        .context-section-title { color: #a7b4c6; }
+        .context-top-list,
+        .context-list,
+        .context-sources { color: #d1dae7; }
+
+        .content-area span[style*="color: var(--success)"] {
+            color: #69e7bb !important;
+            opacity: 0.95 !important;
+        }
+
+        .light-mode .navbar {
+            background: rgba(255, 255, 255, 0.94);
+            border-bottom: 1px solid #dce3ec;
+            box-shadow: 0 8px 28px rgba(18, 28, 45, 0.08);
+        }
+
+        .light-mode .brand { color: #0d1724; }
+        .light-mode .brand:after { color: #697789; }
+        .light-mode .status-pill,
+        .light-mode .clock-display,
+        .light-mode select,
+        .light-mode input[type="range"] {
+            background: #f7f9fc;
+            color: #263345;
+            border-color: #d9e1eb;
+        }
+        .light-mode .btn {
+            background: #f4f7fb;
+            color: #172233;
+            border-color: #d5dde8;
+        }
+        .light-mode .banner,
+        .light-mode .issue-rail,
+        .light-mode .news-card { background: #ffffff; border-color: #d9e1eb; }
+        .light-mode .card-header { background: #f7f9fc; color: #667386; border-bottom-color: #dfe6ef; }
+        .light-mode .row-grid { border-bottom-color: #edf1f6; }
+        .light-mode .content-area { color: #1f2c3d; }
+        .light-mode .text-block { color: #1b2635; }
+        .light-mode .context-panel { background: #f8fafc; border-color: #dbe3ed; }
+        .light-mode .context-title { color: #16202e; }
+        .light-mode .context-top-list,
+        .light-mode .context-list,
+        .light-mode .context-sources { color: #3d4b5e; }
+
+        @media (max-width: 1180px) {
+            .dashboard-shell { grid-template-columns: 1fr; }
+            .card-layout { grid-template-columns: 1fr; }
+            .row-grid { grid-template-columns: 120px minmax(0, 1fr) 220px; }
+        }
+
+        @media (max-width: 760px) {
+            .row-grid { grid-template-columns: 1fr; }
+            .content-area { font-size: 0.98rem; }
+        }
+
+        .scroll-top-btn {
+            position: fixed;
+            right: 24px;
+            bottom: 24px;
+            z-index: 1200;
+            opacity: 0;
+            pointer-events: none;
+            transform: translateY(10px);
+            transition: opacity 0.18s ease, transform 0.18s ease;
+            box-shadow: 0 12px 30px rgba(0,0,0,0.28);
+            background: var(--accent);
+            border-color: rgba(255, 214, 107, 0.75);
+            color: #101722;
+        }
+
+        .scroll-top-btn.visible {
+            opacity: 1;
+            pointer-events: auto;
+            transform: translateY(0);
+        }
+
+        @media (max-width: 640px) {
+            .scroll-top-btn {
+                right: 14px;
+                bottom: 14px;
+            }
+        }
+
+        /* Header should never overlap content on narrower screens. */
+        body {
+            padding-top: 0 !important;
+        }
+
+        .navbar {
+            position: sticky;
+            top: 0;
+            height: auto;
+            min-height: 76px;
+            flex-wrap: wrap;
+            gap: 10px 14px;
+            align-content: center;
+        }
+
+        .controls-group {
+            flex-wrap: wrap;
+            justify-content: flex-end;
+            min-width: 0;
+        }
+
+        .status-cluster {
+            min-width: 0;
+            flex-wrap: wrap;
+        }
+
+        @media (max-width: 1180px) {
+            .navbar {
+                align-items: flex-start;
+                padding: 12px 14px;
+            }
+
+            .brand {
+                flex: 1 1 260px;
+            }
+
+            .controls-group {
+                flex: 1 1 520px;
+                justify-content: flex-start;
+            }
+
+            .status-cluster {
+                order: 3;
+                width: 100%;
+                margin-left: 0;
+            }
+        }
+
+        @media (max-width: 720px) {
+            .brand {
+                flex-basis: 100%;
+            }
+
+            .controls-group,
+            .status-cluster {
+                width: 100%;
+            }
+
+            .clock-display {
+                min-width: 112px;
+            }
+
+            #soundSelect {
+                max-width: 220px;
+            }
+
+            .safe-terms-menu {
+                width: 100%;
+            }
+
+            .safe-terms-menu summary {
+                display: inline-block;
+            }
+
+            .safe-terms-panel {
+                position: static;
+                width: min(100%, 320px);
+                margin-top: 8px;
+            }
+        }
+    </style>
+</head>
+<body id="body">
+
+    <nav class="navbar">
+        <div class="brand">NEWSQUAWK SPELLCHECK</div>
+
+        <div class="status-cluster">
+            <div class="status-pill {{ 'alert' if uncorrected_rows else '' }}">
+                <span class="status-dot"></span>
+                <span>{{ uncorrected_rows|length }} OPEN ISSUE{{ '' if uncorrected_rows|length == 1 else 'S' }}</span>
+            </div>
+            <div class="status-pill">
+                <span>ROWS {{ rows|length }}</span>
+            </div>
+            <div class="status-pill">
+                <span>AUTO REFRESH 10S</span>
+            </div>
+        </div>
+
+        <div class="controls-group">
+            <div class="clock-display" id="clock">--:--:--</div>
+
+            <button class="btn" onclick="scrollToTop()">Top</button>
+
+            <button class="btn" onclick="playErrorAlert()">🔊 Test Sound</button>
+
+            <details class="safe-terms-menu" id="safeTermsMenu">
+                <summary>Safe Words <span id="safeTermsCount">{{ safe_terms|length }}</span></summary>
+                <div class="safe-terms-panel">
+                    <div class="safe-terms-title">Editable Safe List</div>
+                    <input class="safe-term-search" id="safeTermSearch" type="search" autocomplete="off" placeholder="Check/search safe words">
+                    <div class="safe-term-check-result" id="safeTermCheckResult">Type a word to check it.</div>
+                    <form class="safe-term-form" id="safeTermForm">
+                        <input id="safeTermInput" type="text" autocomplete="off" placeholder="Add a new safe word">
+                        <button class="btn btn-success" type="submit">Add</button>
+                    </form>
+                    <select class="safe-terms-list" id="safeTermsSelect" size="7"></select>
+                    <div style="display:flex; gap:8px; margin-top:10px; justify-content:space-between; align-items:center;">
+                        <button class="btn btn-secondary" type="button" id="removeSafeTermBtn">Remove Selected</button>
+                    </div>
+                    <div class="safe-terms-status" id="safeTermsStatus">Add one safe word at a time.</div>
+                </div>
+            </details>
+
+            <select id="soundSelect"></select>
+
+            <span id="annoyanceBadge" style="font-size: 0.65rem; font-weight: 800; color: var(--text-dim); min-width: 76px;">--/10</span>
+
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 0.65rem; font-weight: 800;">SOUND</span>
+                <label class="switch">
+                    <input type="checkbox" id="soundToggle" checked>
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <input type="range" id="volumeControl" min="0" max="1" step="0.01" value="0.5" style="width: 80px;">
+            <button class="btn" onclick="toggleMode()">🌓</button>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="dashboard-shell"
+             data-has-uncorrected="{{ 'true' if uncorrected_rows else 'false' }}"
+             data-error-signature="{{ uncorrected_rows|map(attribute='id')|list|join('|') }}::{{ uncorrected_rows|map(attribute='section')|list|join('|') }}::{{ uncorrected_rows|map(attribute='error_key')|list|join('|') }}">
+            <main class="main-stream">
+                {% if uncorrected_rows %}
+                    <div class="banner banner-error" id="error-banner">
+                        <div>
+                            <div class="banner-title">Review Queue</div>
+                            <div class="banner-main">{{ uncorrected_rows|length }} issue{{ '' if uncorrected_rows|length == 1 else 's' }} need verification</div>
+                            <div id="muteStateLabel" class="muted-chip" style="display:none; margin-top: 8px;">Alerts muted</div>
+                        </div>
+                        <div class="banner-actions">
+                            <button class="btn" onclick="goToFirstMistake()">Go To First</button>
+                            <button class="btn btn-error" id="tempMuteBtn" onclick="toggleTempMute()">Temp Mute (5m)</button>
+                        </div>
+                    </div>
+                {% else %}
+                    <div class="banner banner-clean">
+                        <div>
+                            <div class="banner-title">Feed Status</div>
+                            <div class="banner-main">Clean. No active spelling or grammar issues.</div>
+                        </div>
+                    </div>
+                {% endif %}
+
+                {% if rows %}
+                    {% for row in rows %}
+                {% set ns = namespace(has_errors=false) %}
+                {% for s in ["Headline", "Body", "Analysis", "Reaction"] %}
+                    {% if row.get(s) and "<span style='color:red'>" in row[s].highlighted %}
+                        {% set ns.has_errors = true %}
+                    {% endif %}
+                {% endfor %}
+
+                <div class="news-card" id="card-{{ row.id }}">
+                    <div class="card-header">
+                        <span>ID: {{ row.id }}</span>
+                        <span style="display:flex; align-items:center; gap:10px;">
+                            <span>TIMESTAMP: {{ row.timestamp.strftime("%Y-%m-%d %H:%M:%S") }}</span>
+                            {% if ns.has_errors %}
+                                <button class="btn" onclick="goToCardMistake('{{ row.id }}')">Go To Mistake</button>
+                            {% endif %}
+                        </span>
+                    </div>
+
+                    <div class="card-layout">
+                        <div>
+                            {% for section in ["Headline", "Body", "Analysis", "Reaction"] %}
+                                {% if row.get(section) and row[section].highlighted %}
+                                <div class="row-grid">
+                                    <div class="label">{{ section }}</div>
+                                    <div class="content-area text-block" id="text-{{ row.id }}-{{ section }}">{{ row[section].highlighted|safe }}</div>
+                                    <div class="content-area">
+                                        {% if "<span style='color:red'>" in row[section].highlighted %}
+                                            {% set section_issues = row[section].issues if row[section].get('issues') else [] %}
+                                            {% if section_issues %}
+                                                {% for issue in section_issues %}
+                                                    <div class="issue-card" data-issue-key="{{ issue.key }}">
+                                                        <div class="issue-row">{{ issue.text }} -> {{ issue.suggestion if issue.suggestion else '(review)' }}</div>
+                                                        <div class="issue-actions">
+                                                            <button class="btn btn-success" onclick="markCorrected('{{ row.id }}', '{{ section }}', '{{ issue.key }}')">Mark Fixed</button>
+                                                            <button class="btn" onclick="dismissSingle('{{ row.id }}', '{{ section }}', '{{ issue.key }}', false)">Dismiss Once</button>
+                                                            {% if issue.learnable %}
+                                                                <button class="btn" onclick="dismissSingle('{{ row.id }}', '{{ section }}', '{{ issue.key }}', true)">Add to Safe Words</button>
+                                                            {% endif %}
+                                                            <button class="btn btn-secondary" onmousedown="cacheSelection('{{ row.id }}', '{{ section }}')" onclick="reportMissed('{{ row.id }}', '{{ section }}')">Report Missed</button>
+                                                        </div>
+                                                    </div>
+                                                {% endfor %}
+                                            {% else %}
+                                                <div class="correction-list">
+                                                    {{ row[section].corrected | safe }}
+                                                </div>
+                                                <div class="issue-actions">
+                                                    <button class="btn btn-success" onclick="markCorrected('{{ row.id }}', '{{ section }}')">Mark All Fixed</button>
+                                                    <button class="btn" onclick="dismissSingle('{{ row.id }}', '{{ section }}', null, false)">Dismiss All</button>
+                                                    <button class="btn btn-secondary" onmousedown="cacheSelection('{{ row.id }}', '{{ section }}')" onclick="reportMissed('{{ row.id }}', '{{ section }}')">Report Missed</button>
+                                                </div>
+                                            {% endif %}
+                                        {% else %}
+                                            <span style="color: var(--success); opacity: 0.5; font-size: 0.8rem; font-weight: 700;">VERIFIED CLEAN</span>
+                                            <div class="issue-actions" style="margin-top: 12px;">
+                                                <button class="btn btn-secondary" onmousedown="cacheSelection('{{ row.id }}', '{{ section }}')" onclick="reportMissed('{{ row.id }}', '{{ section }}')">Report Missed</button>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+
+                        <aside class="context-panel">
+                            {% set ctx = row.get("Context") or row.get("HeadlineContext") %}
+                            {% set context_allowed = true %}
+                            {% if ctx and ctx.context_allowed is defined %}
+                                {% set context_allowed = ctx.context_allowed %}
+                            {% endif %}
+                            <div class="context-title">HISTORICAL CONTEXT</div>
+                            {% if not ctx or ctx.status == "queued" %}
+                                <span class="context-meta">CONTEXT QUEUED...</span>
+                                <div class="context-progress-wrap" data-context-progress="1" data-start="{{ ctx.queued_since if ctx and ctx.queued_since else '' }}" data-timeout="{{ context_timeout_seconds|default(120) }}">
+                                    <div class="context-progress-track"><div class="context-progress-bar indeterminate" data-progress-bar="1"></div></div>
+                                    <div class="context-progress-meta" data-progress-meta="1">Waiting for worker...</div>
+                                </div>
+                            {% elif ctx.status == "loading" %}
+                                {% set is_web_loading = ctx.error and 'web historical context' in ctx.error|lower %}
+                                <span class="context-meta">{{ 'FETCHING WEB CONTEXT...' if is_web_loading else 'FETCHING CONTEXT...' }}</span>
+                                <div class="context-progress-wrap" data-context-progress="1" data-start="{{ ctx.loading_since if ctx and ctx.loading_since else '' }}" data-timeout="{{ context_timeout_seconds|default(120) }}">
+                                    <div class="context-progress-track"><div class="context-progress-bar" data-progress-bar="1"></div></div>
+                                    <div class="context-progress-meta" data-progress-meta="1">In progress...</div>
+                                </div>
+                            {% elif ctx.status == "idle" %}
+                                <span class="context-meta">CONTEXT NOT LOADED</span>
+                                <div style="margin-top: 10px;">
+                                    <button class="btn btn-secondary" onclick="fetchContext('{{ row.id }}', false)">Fetch Context</button>
+                                </div>
+                            {% elif ctx.status == "ready" %}
+                                {% set immediate_items = ctx.sections.immediate_context if ctx.sections and ctx.sections.immediate_context else ctx.summary %}
+                                {% if immediate_items %}
+                                    <div class="context-subtitle">LATEST RELATED HEADLINES</div>
+                                    <ul class="context-top-list">
+                                        {% for point in immediate_items[:6] %}
+                                            <li>{{ point }}</li>
+                                        {% endfor %}
+                                    </ul>
+                                {% endif %}
+                                {% if ctx.sections %}
+                                    <details class="context-details">
+                                        <summary>SHOW FULL CONTEXT</summary>
+
+                                        {% if ctx.sections.immediate_context and ctx.sections.immediate_context|length > 6 %}
+                                            <div class="context-section">
+                                                <div class="context-section-title">OLDER RELATED HEADLINES</div>
+                                                <ul class="context-list">
+                                                    {% for point in ctx.sections.immediate_context[6:] %}
+                                                        <li>{{ point }}</li>
+                                                    {% endfor %}
+                                                </ul>
+                                            </div>
+                                        {% endif %}
+
+                                        {% if ctx.sections.historical_arc %}
+                                            <div class="context-section">
+                                                <div class="context-section-title">HISTORICAL ARC</div>
+                                                <ul class="context-list">
+                                                    {% for point in ctx.sections.historical_arc %}
+                                                        <li>{{ point }}</li>
+                                                    {% endfor %}
+                                                </ul>
+                                            </div>
+                                        {% endif %}
+
+                                        {% if ctx.sections.why_now %}
+                                            <div class="context-section">
+                                                <div class="context-section-title">WHY IT MATTERS NOW</div>
+                                                <ul class="context-list">
+                                                    {% for point in ctx.sections.why_now %}
+                                                        <li>{{ point }}</li>
+                                                    {% endfor %}
+                                                </ul>
+                                            </div>
+                                        {% endif %}
+                                    </details>
+                                {% endif %}
+                                {% if ctx.sources %}
+                                    <details class="context-details context-sources">
+                                        <summary>SOURCES</summary>
+                                        <ul class="context-source-list">
+                                            {% for source in ctx.sources %}
+                                                <li><a href="{{ source.url }}" target="_blank" rel="noopener noreferrer">{{ source.title }}</a></li>
+                                            {% endfor %}
+                                        </ul>
+                                    </details>
+                                {% endif %}
+                            {% elif ctx.status == "error" %}
+                                <span class="context-meta">CONTEXT UNAVAILABLE</span>
+                                {% if ctx.error %}
+                                    <div class="context-sources">{{ ctx.error }}</div>
+                                {% endif %}
+                            {% elif ctx.status == "none" %}
+                                <span class="context-meta">NO RELEVANT CONTEXT FOUND</span>
+                                {% if ctx.error %}
+                                    <div class="context-sources">{{ ctx.error }}</div>
+                                {% endif %}
+                            {% else %}
+                                <span class="context-meta">NO RELEVANT CONTEXT FOUND</span>
+                            {% endif %}
+
+                            {% if context_allowed and (not ctx or not ctx.web_enriched) %}
+                                <div style="margin-top: 10px;">
+                                    <button class="btn btn-secondary" onclick="fetchContext('{{ row.id }}', true)" {% if ctx and (ctx.status == "queued" or ctx.status == "loading") %}disabled{% endif %}>Fetch Web Historical Context</button>
+                                </div>
+                            {% endif %}
+                        </aside>
+                    </div>
+                </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="news-card" style="text-align: center; color: var(--text-dim); padding: 34px;">
+                        Monitoring Newsquawk API for new headlines...
+                    </div>
+                {% endif %}
+            </main>
+
+            <aside class="issue-rail">
+                <div class="rail-kicker">Session</div>
+                <div class="rail-number">{{ uncorrected_rows|length }}</div>
+                <div class="rail-copy">
+                    {{ 'Active issues in the current feed. Interacting once acknowledges the sound loop.' if uncorrected_rows else 'No active issues. The monitor is quiet.' }}
+                </div>
+                {% if uncorrected_rows %}
+                    <button class="btn btn-error" onclick="goToFirstMistake()" style="width: 100%;">Review Next</button>
+                {% else %}
+                    <button class="btn btn-success" style="width: 100%; cursor: default;">All Clear</button>
+                {% endif %}
+            </aside>
+        </div>
+    </div>
+
+    <button class="btn scroll-top-btn" id="scrollTopBtn" onclick="scrollToTop()">Top</button>
+
+    <script>
+        function updateClock() {
+            const options = { timeZone: 'Europe/London', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
+            document.getElementById('clock').innerText = "LDN " + new Intl.DateTimeFormat('en-GB', options).format(new Date());
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        function toggleMode() {
+            const body = document.getElementById("body");
+            body.classList.toggle("light-mode");
+            localStorage.setItem("theme", body.classList.contains("light-mode") ? "light" : "dark");
+        }
+
+        function focusMistakeTarget(target) {
+            if (!target) return;
+            target.scrollIntoView({ behavior: "smooth", block: "center" });
+            target.classList.add("jump-focus");
+            setTimeout(() => target.classList.remove("jump-focus"), 1300);
+        }
+
+        function goToCardMistake(rowId) {
+            const card = document.getElementById(`card-${rowId}`);
+            if (!card) return;
+            const firstIssue = card.querySelector('.issue-card');
+            if (firstIssue) {
+                focusMistakeTarget(firstIssue);
+                return;
+            }
+            const redSpan = card.querySelector("span[style*='color:red']");
+            if (redSpan) {
+                focusMistakeTarget(redSpan.closest('.row-grid') || redSpan);
+                return;
+            }
+            focusMistakeTarget(card);
+        }
+
+        function goToFirstMistake() {
+            const firstIssue = document.querySelector('.issue-card');
+            if (firstIssue) {
+                focusMistakeTarget(firstIssue);
+                return;
+            }
+            const firstRed = document.querySelector("span[style*='color:red']");
+            if (firstRed) {
+                focusMistakeTarget(firstRed.closest('.row-grid') || firstRed);
+            }
+        }
+
+        function scrollToTop() {
+            window.scrollTo({ top: 0, behavior: "smooth" });
+        }
+
+        function updateScrollTopButton() {
+            const btn = document.getElementById("scrollTopBtn");
+            if (!btn) return;
+            const y = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
+            btn.classList.toggle("visible", y > 450);
+        }
+
+        let audioCtx = null;
+        let errorInterval = null;
+        let refreshInFlight = false;
+        const lastSelectionByTarget = {};
+        const TEMP_MUTE_MS = 5 * 60 * 1000;
+        let hasUncorrectedRows = false;
+        let errorAlertSignature = "";
+        let userAcknowledgedAlerts = localStorage.getItem("acknowledgedErrorSignature") === errorAlertSignature;
+        let safeTerms = {{ safe_terms|tojson }};
+
+        const SOUND_PRESETS = [
+            { id: "elevator_ding", name: "Elevator Ding", annoyance: 2 },
+            { id: "airline_chime", name: "Airline Chime", annoyance: 3 },
+            { id: "phone_buzz", name: "Phone Buzz", annoyance: 3 },
+            { id: "original", name: "Classic Beep", annoyance: 5 },
+            { id: "terminal_ping", name: "Terminal Ping", annoyance: 5 },
+            { id: "market_bell", name: "Market Bell", annoyance: 5 },
+            { id: "news_sting", name: "Breaking News", annoyance: 6 },
+            { id: "retro_arcade", name: "Retro Arcade", annoyance: 6 },
+            { id: "sonar_ping", name: "Sonar Ping", annoyance: 6 },
+            { id: "pager", name: "Emergency Pager", annoyance: 7 },
+            { id: "mission_alert", name: "Mission Alert", annoyance: 8 },
+            { id: "sad_trombone", name: "Sad Trombone", annoyance: 8 }
+        ];
+
+        function getMuteUntilMs() {
+            return parseInt(localStorage.getItem("tempMuteUntilMs") || "0", 10);
+        }
+
+        function isTempMuted() {
+            const until = getMuteUntilMs();
+            return Number.isFinite(until) && until > Date.now();
+        }
+
+        function formatRemaining(ms) {
+            const total = Math.max(0, Math.ceil(ms / 1000));
+            const mm = String(Math.floor(total / 60)).padStart(2, "0");
+            const ss = String(total % 60).padStart(2, "0");
+            return `${mm}:${ss}`;
+        }
+
+        function applyTempMuteState() {
+            const muteButton = document.getElementById("tempMuteBtn");
+            const muteLabel = document.getElementById("muteStateLabel");
+
+            // If there are no active corrections, lift any temporary mute immediately.
+            if (!hasUncorrectedRows) {
+                if (getMuteUntilMs() > 0) {
+                    localStorage.removeItem("tempMuteUntilMs");
+                    const prev = localStorage.getItem("tempMutePrevEnabled");
+                    if (prev !== null) {
+                        toggleInput.checked = prev === "true";
+                        localStorage.setItem("soundEnabled", toggleInput.checked ? "true" : "false");
+                    }
+                }
+                toggleInput.disabled = false;
+                if (muteButton) muteButton.textContent = "Temp Mute (5m)";
+                if (muteLabel) muteLabel.style.display = "none";
+                return;
+            }
+
+            const muted = isTempMuted();
+
+            if (muted) {
+                const remaining = getMuteUntilMs() - Date.now();
+                if (muteButton) muteButton.textContent = `Muted ${formatRemaining(remaining)} (Unmute)`;
+                if (muteLabel) {
+                    muteLabel.style.display = "block";
+                    muteLabel.textContent = `Alerts muted for ${formatRemaining(remaining)}`;
+                }
+                if (toggleInput.checked) {
+                    toggleInput.checked = false;
+                    localStorage.setItem("soundEnabled", "false");
+                }
+                toggleInput.disabled = true;
+                stopErrorLoop();
+                return;
+            }
+
+            const hadMute = getMuteUntilMs() > 0;
+            if (hadMute) {
+                localStorage.removeItem("tempMuteUntilMs");
+                const prev = localStorage.getItem("tempMutePrevEnabled");
+                if (prev !== null) {
+                    toggleInput.checked = prev === "true";
+                    localStorage.setItem("soundEnabled", toggleInput.checked ? "true" : "false");
+                }
+                if (hasUncorrectedRows && toggleInput.checked) startErrorLoop();
+            }
+            toggleInput.disabled = false;
+            if (muteButton) muteButton.textContent = "Temp Mute (5m)";
+            if (muteLabel) muteLabel.style.display = "none";
+        }
+
+        function toggleTempMute() {
+            if (isTempMuted()) {
+                localStorage.removeItem("tempMuteUntilMs");
+                applyTempMuteState();
+                if (hasUncorrectedRows && toggleInput.checked) startErrorLoop();
+                return;
+            }
+
+            localStorage.setItem("tempMutePrevEnabled", toggleInput.checked ? "true" : "false");
+            localStorage.setItem("tempMuteUntilMs", String(Date.now() + TEMP_MUTE_MS));
+            applyTempMuteState();
+        }
+
+        function getPresetById(id) {
+            return SOUND_PRESETS.find(p => p.id === id) || SOUND_PRESETS[0];
+        }
+
+        function renderSoundOptions() {
+            const select = document.getElementById("soundSelect");
+            const current = select.value || localStorage.getItem("selectedSound") || "original";
+
+            const eligible = SOUND_PRESETS
+                .slice()
+                .sort((a, b) => a.annoyance - b.annoyance);
+
+            select.innerHTML = "";
+            eligible.forEach(preset => {
+                const option = document.createElement("option");
+                option.value = preset.id;
+                option.textContent = `${preset.annoyance}/10 - ${preset.name}`;
+                select.appendChild(option);
+            });
+
+            if (!eligible.length) {
+                const fallback = document.createElement("option");
+                fallback.value = SOUND_PRESETS[0].id;
+                fallback.textContent = `${SOUND_PRESETS[0].annoyance}/10 - ${SOUND_PRESETS[0].name}`;
+                select.appendChild(fallback);
+                select.value = SOUND_PRESETS[0].id;
+            } else if (eligible.some(p => p.id === current)) {
+                select.value = current;
+            } else if (eligible.some(p => p.id === "original")) {
+                select.value = "original";
+            } else {
+                select.value = eligible[0].id;
+            }
+
+            updateAnnoyanceBadge();
+            localStorage.setItem("selectedSound", select.value);
+        }
+
+        function updateAnnoyanceBadge() {
+            const selected = document.getElementById("soundSelect").value;
+            const badge = document.getElementById("annoyanceBadge");
+            const preset = getPresetById(selected);
+            badge.innerText = `${preset.annoyance}/10`;
+        }
+
+        function setSafeTermsStatus(message, isError = false) {
+            const status = document.getElementById("safeTermsStatus");
+            if (!status) return;
+            status.textContent = message;
+            status.classList.toggle("error", Boolean(isError));
+        }
+
+        function renderSafeTerms() {
+            const select = document.getElementById("safeTermsSelect");
+            const count = document.getElementById("safeTermsCount");
+            const search = document.getElementById("safeTermSearch");
+            const result = document.getElementById("safeTermCheckResult");
+            if (!select || !count) return;
+
+            const selected = select.value;
+            const unique = Array.from(new Set((safeTerms || []).map(term => String(term || "").trim()).filter(Boolean)))
+                .sort((a, b) => a.localeCompare(b));
+            const query = search ? search.value.trim().toLowerCase() : "";
+            const visible = query ? unique.filter(term => term.toLowerCase().includes(query)) : unique;
+            safeTerms = unique;
+            count.textContent = String(unique.length);
+            select.innerHTML = "";
+
+            if (result) {
+                const exact = query && unique.some(term => term.toLowerCase() === query);
+                result.classList.toggle("found", Boolean(exact));
+                result.classList.toggle("not-found", Boolean(query && !exact));
+                if (!query) result.textContent = "Type a word to check it.";
+                else if (exact) result.textContent = `"${search.value.trim()}" is a safe word.`;
+                else result.textContent = `"${search.value.trim()}" is not a safe word.`;
+            }
+
+            if (!visible.length) {
+                const option = document.createElement("option");
+                option.value = "";
+                option.textContent = query ? "No matching safe words" : "No safe words yet";
+                select.appendChild(option);
+                return;
+            }
+
+            visible.forEach((term) => {
+                const option = document.createElement("option");
+                option.value = term;
+                option.textContent = term;
+                select.appendChild(option);
+            });
+
+            if (unique.includes(selected)) select.value = selected;
+        }
+
+        function loadSafeTerms() {
+            return fetch("/safe_terms", { cache: "no-store" })
+                .then((res) => res.json())
+                .then((data) => {
+                    if (!data.ok) return;
+                    safeTerms = data.terms || [];
+                    renderSafeTerms();
+                })
+                .catch(() => {});
+        }
+
+        function addSafeTerm(event) {
+            event.preventDefault();
+            const input = document.getElementById("safeTermInput");
+            const term = input ? input.value.trim() : "";
+            if (!term) {
+                setSafeTermsStatus("Enter a safe word first.", true);
+                return;
+            }
+
+            fetch("/safe_terms", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ term: term })
+            })
+            .then((res) => res.json().then((data) => ({ ok: res.ok, data })))
+            .then(({ ok, data }) => {
+                if (!ok || !data.ok) {
+                    setSafeTermsStatus(data.error || "Could not add safe word.", true);
+                    return;
+                }
+                safeTerms = data.terms || safeTerms;
+                if (input) input.value = "";
+                const search = document.getElementById("safeTermSearch");
+                if (search) search.value = data.term || term;
+                renderSafeTerms();
+                const cleared = Number(data.cleared || 0);
+                setSafeTermsStatus(cleared ? `Added ${data.term}. Cleared ${cleared} active item(s).` : `Added ${data.term}.`);
+                if (cleared) refreshDashboard(500, true);
+            })
+            .catch(() => setSafeTermsStatus("Could not add safe word.", true));
+        }
+
+        function removeSelectedSafeTerm() {
+            const select = document.getElementById("safeTermsSelect");
+            const term = select ? select.value : "";
+            if (!term) {
+                setSafeTermsStatus("Select a safe word to remove.", true);
+                return;
+            }
+
+            fetch("/safe_terms", {
+                method: "DELETE",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ term: term })
+            })
+            .then((res) => res.json().then((data) => ({ ok: res.ok, data })))
+            .then(({ ok, data }) => {
+                if (!ok || !data.ok) {
+                    setSafeTermsStatus(data.error || "Could not remove safe word.", true);
+                    return;
+                }
+                safeTerms = data.terms || [];
+                renderSafeTerms();
+                setSafeTermsStatus(`Removed ${term}.`);
+            })
+            .catch(() => setSafeTermsStatus("Could not remove safe word.", true));
+        }
+
+        function playErrorAlert() {
+            if (userAcknowledgedAlerts) return;
+            if (isTempMuted()) return;
+            if (!document.getElementById('soundToggle').checked) return;
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === "suspended") audioCtx.resume();
+
+            const masterVol = parseFloat(document.getElementById("volumeControl").value);
+            const soundType = document.getElementById("soundSelect").value;
+
+            const compressor = audioCtx.createDynamicsCompressor();
+            compressor.connect(audioCtx.destination);
+
+            const mainGain = audioCtx.createGain();
+            mainGain.gain.setValueAtTime(masterVol, audioCtx.currentTime);
+            mainGain.connect(compressor);
+
+            function tone(freq, type, start, duration, endVol = 0.001, freqEnd = null) {
+                const osc = audioCtx.createOscillator();
+                const g = audioCtx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, audioCtx.currentTime + start);
+                if (freqEnd) osc.frequency.exponentialRampToValueAtTime(freqEnd, audioCtx.currentTime + start + duration);
+
+                g.gain.setValueAtTime(masterVol, audioCtx.currentTime + start);
+                g.gain.exponentialRampToValueAtTime(endVol, audioCtx.currentTime + start + duration);
+
+                osc.connect(g);
+                g.connect(mainGain);
+                osc.start(audioCtx.currentTime + start);
+                osc.stop(audioCtx.currentTime + start + duration);
+            }
+
+            function noiseBurst(start, duration, filterFreq = 120, endVol = 0.001) {
+                const bufferSize = Math.max(1, Math.floor(audioCtx.sampleRate * duration));
+                const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+
+                const source = audioCtx.createBufferSource();
+                const filter = audioCtx.createBiquadFilter();
+                const g = audioCtx.createGain();
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(filterFreq, audioCtx.currentTime + start);
+                g.gain.setValueAtTime(masterVol * 0.65, audioCtx.currentTime + start);
+                g.gain.exponentialRampToValueAtTime(endVol, audioCtx.currentTime + start + duration);
+                source.buffer = buffer;
+                source.connect(filter);
+                filter.connect(g);
+                g.connect(mainGain);
+                source.start(audioCtx.currentTime + start);
+                source.stop(audioCtx.currentTime + start + duration);
+            }
+
+            if (soundType === 'elevator_ding') {
+                tone(880, 'sine', 0, 0.32, 0.001, 920);
+                tone(1320, 'sine', 0.015, 0.25, 0.001, 1360);
+            } else if (soundType === 'airline_chime') {
+                tone(587.33, 'sine', 0, 0.24, 0.001);
+                tone(783.99, 'sine', 0.28, 0.34, 0.001);
+            } else if (soundType === 'phone_buzz') {
+                noiseBurst(0, 0.16, 95);
+                noiseBurst(0.22, 0.16, 95);
+            } else if (soundType === 'original') {
+                tone(880, 'square', 0, 0.15);
+                tone(660, 'square', 0.25, 0.2);
+            } else if (soundType === 'terminal_ping') {
+                tone(1180, 'sine', 0, 0.095);
+                tone(1180, 'sine', 0.13, 0.095);
+            } else if (soundType === 'market_bell') {
+                tone(720, 'sine', 0, 0.42, 0.001, 690);
+                tone(1440, 'triangle', 0.005, 0.32, 0.001, 1380);
+                tone(2160, 'sine', 0.01, 0.18, 0.001, 2050);
+            } else if (soundType === 'news_sting') {
+                tone(392, 'sawtooth', 0, 0.16, 0.005, 523.25);
+                tone(523.25, 'sawtooth', 0.17, 0.16, 0.005, 659.25);
+                tone(783.99, 'square', 0.36, 0.28, 0.001);
+                tone(196, 'triangle', 0.34, 0.38, 0.001);
+            } else if (soundType === 'retro_arcade') {
+                [880, 1175, 1568, 1175, 1760].forEach((freq, i) => tone(freq, 'square', i * 0.075, 0.055, 0.01));
+            } else if (soundType === 'sonar_ping') {
+                tone(980, 'sine', 0, 0.55, 0.0001, 740);
+                tone(1960, 'sine', 0.015, 0.18, 0.001, 1480);
+            } else if (soundType === 'pager') {
+                tone(1020, 'square', 0, 0.09);
+                tone(930, 'square', 0.12, 0.09);
+                tone(1020, 'square', 0.24, 0.09);
+                tone(930, 'square', 0.36, 0.09);
+            } else if (soundType === 'mission_alert') {
+                tone(740, 'square', 0, 0.08);
+                tone(740, 'square', 0.12, 0.08);
+                tone(554, 'square', 0.24, 0.10);
+                tone(932, 'square', 0.40, 0.18);
+                noiseBurst(0.38, 0.18, 180);
+            } else if (soundType === 'sad_trombone') {
+                tone(392, 'sawtooth', 0, 0.25, 0.006, 370);
+                tone(349.23, 'sawtooth', 0.28, 0.25, 0.006, 330);
+                tone(311.13, 'sawtooth', 0.56, 0.28, 0.006, 293.66);
+                tone(261.63, 'sawtooth', 0.88, 0.55, 0.001, 196);
+            } else {
+                tone(880, 'square', 0, 0.15);
+                tone(660, 'square', 0.25, 0.2);
+            }
+        }
+
+        function startErrorLoop() {
+            if (userAcknowledgedAlerts) return;
+            if (isTempMuted()) return;
+            if (errorInterval) return;
+            playErrorAlert();
+            errorInterval = setInterval(playErrorAlert, 15000);
+        }
+
+        function stopErrorLoop() {
+            if (errorInterval) { clearInterval(errorInterval); errorInterval = null; }
+        }
+
+        function acknowledgeErrorAlerts() {
+            if (!hasUncorrectedRows || userAcknowledgedAlerts) return;
+            userAcknowledgedAlerts = true;
+            localStorage.setItem("acknowledgedErrorSignature", errorAlertSignature);
+            stopErrorLoop();
+        }
+
+        function getDashboardState() {
+            const shell = document.querySelector(".dashboard-shell");
+            return {
+                hasIssues: shell ? shell.dataset.hasUncorrected === "true" : false,
+                signature: shell ? (shell.dataset.errorSignature || "") : ""
+            };
+        }
+
+        function syncAlertStateFromDashboard() {
+            const previousSignature = errorAlertSignature;
+            const state = getDashboardState();
+            hasUncorrectedRows = state.hasIssues;
+            errorAlertSignature = state.signature;
+            userAcknowledgedAlerts = hasUncorrectedRows && localStorage.getItem("acknowledgedErrorSignature") === errorAlertSignature;
+
+            if (!hasUncorrectedRows) {
+                localStorage.removeItem("acknowledgedErrorSignature");
+                stopErrorLoop();
+            } else if (previousSignature !== errorAlertSignature && !userAcknowledgedAlerts && toggleInput && toggleInput.checked) {
+                startErrorLoop();
+            }
+
+            applyTempMuteState();
+        }
+
+        function getOpenDashboardDetails() {
+            return Array.from(document.querySelectorAll(".dashboard-shell details[open]")).map((details) => {
+                const card = details.closest(".news-card");
+                const summary = details.querySelector("summary");
+                return `${card ? card.id : "global"}::${details.className || "details"}::${summary ? summary.textContent.trim() : ""}`;
+            });
+        }
+
+        function restoreOpenDashboardDetails(keys) {
+            const wanted = new Set(keys || []);
+            if (!wanted.size) return;
+            document.querySelectorAll(".dashboard-shell details").forEach((details) => {
+                const card = details.closest(".news-card");
+                const summary = details.querySelector("summary");
+                const key = `${card ? card.id : "global"}::${details.className || "details"}::${summary ? summary.textContent.trim() : ""}`;
+                if (wanted.has(key)) details.open = true;
+            });
+        }
+
+        function stableDashboardSignature(shell) {
+            if (!shell) return "";
+            const clone = shell.cloneNode(true);
+            clone.querySelectorAll('[data-context-progress="1"]').forEach((el) => el.remove());
+            clone.querySelectorAll('.jump-focus').forEach((el) => el.classList.remove('jump-focus'));
+            return `${clone.dataset.hasUncorrected || ""}::${clone.dataset.errorSignature || ""}::${clone.textContent.replace(/\s+/g, " ").trim()}`;
+        }
+
+        function refreshDashboard(delayMs = 0, force = false) {
+            if (delayMs > 0) {
+                setTimeout(() => refreshDashboard(0, force), delayMs);
+                return;
+            }
+            if (refreshInFlight) return;
+            refreshInFlight = true;
+            const openDetails = getOpenDashboardDetails();
+
+            fetch(`${window.location.pathname}?soft_refresh=${Date.now()}`, {
+                headers: { "X-Requested-With": "fetch" },
+                cache: "no-store"
+            })
+            .then((res) => {
+                if (!res.ok) throw new Error("Refresh failed");
+                return res.text();
+            })
+            .then((html) => {
+                const doc = new DOMParser().parseFromString(html, "text/html");
+                const nextStatus = doc.querySelector(".status-cluster");
+                const nextShell = doc.querySelector(".dashboard-shell");
+                const currentStatus = document.querySelector(".status-cluster");
+                const currentShell = document.querySelector(".dashboard-shell");
+
+                if (nextStatus && currentStatus) currentStatus.replaceWith(nextStatus);
+                if (nextShell && currentShell) {
+                    if (!force && stableDashboardSignature(currentShell) === stableDashboardSignature(nextShell)) {
+                        syncAlertStateFromDashboard();
+                        return;
+                    }
+
+                    document.body.classList.add("soft-refreshing");
+                    currentShell.replaceWith(nextShell);
+                    restoreOpenDashboardDetails(openDetails);
+                    updateContextProgressBars();
+                    updateScrollTopButton();
+                    syncAlertStateFromDashboard();
+                }
+            })
+            .catch(() => {})
+            .finally(() => {
+                refreshInFlight = false;
+                setTimeout(() => document.body.classList.remove("soft-refreshing"), 120);
+            });
+        }
+
+        const volInput = document.getElementById("volumeControl");
+        const soundInput = document.getElementById("soundSelect");
+        const toggleInput = document.getElementById("soundToggle");
+        const safeTermForm = document.getElementById("safeTermForm");
+        const safeTermSearch = document.getElementById("safeTermSearch");
+        const removeSafeTermBtn = document.getElementById("removeSafeTermBtn");
+
+        if (safeTermForm) safeTermForm.addEventListener("submit", addSafeTerm);
+        if (safeTermSearch) safeTermSearch.addEventListener("input", renderSafeTerms);
+        if (removeSafeTermBtn) removeSafeTermBtn.addEventListener("click", removeSelectedSafeTerm);
+
+        window.onload = () => {
+            if (localStorage.getItem("theme") === "light") document.body.classList.add("light-mode");
+
+            // Restore Persistent Settings
+            if (localStorage.getItem("errorVolume")) volInput.value = localStorage.getItem("errorVolume");
+            renderSoundOptions();
+            renderSafeTerms();
+            if (localStorage.getItem("soundEnabled")) toggleInput.checked = localStorage.getItem("soundEnabled") === "true";
+            syncAlertStateFromDashboard();
+            updateContextProgressBars();
+            updateScrollTopButton();
+
+            if (hasUncorrectedRows && !userAcknowledgedAlerts) startErrorLoop();
+            ["click", "keydown", "scroll", "touchstart"].forEach((eventName) => {
+                window.addEventListener(eventName, acknowledgeErrorAlerts, { passive: true });
+            });
+            window.addEventListener("scroll", updateScrollTopButton, { passive: true });
+            document.addEventListener("scroll", updateScrollTopButton, { passive: true });
+            setInterval(applyTempMuteState, 1000);
+            setInterval(updateContextProgressBars, 1000);
+            setInterval(updateScrollTopButton, 500);
+            setInterval(refreshDashboard, 10000);
+        };
+
+        volInput.oninput = () => localStorage.setItem("errorVolume", volInput.value);
+        soundInput.onchange = () => {
+            localStorage.setItem("selectedSound", soundInput.value);
+            updateAnnoyanceBadge();
+            playErrorAlert();
+        };
+        toggleInput.onchange = () => {
+            if (isTempMuted() && toggleInput.checked) {
+                toggleInput.checked = false;
+                return;
+            }
+            localStorage.setItem("soundEnabled", toggleInput.checked);
+        };
+
+        function markCorrected(id, section, issueKey = null) {
+            fetch("/corrected", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ id: id, section: section, issue_key: issueKey })
+            }).then(() => refreshDashboard(0, true));
+        }
+
+        function fetchContext(id, includeWeb = false) {
+            fetch("/context/fetch", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ id: id, include_web: includeWeb })
+            })
+            .then((res) => res.json())
+            .then((data) => {
+                if (!data.ok) {
+                    alert(data.error || "Could not queue context fetch.");
+                    return;
+                }
+                refreshDashboard(1200, true);
+            })
+            .catch(() => alert("Could not queue context fetch."));
+        }
+
+        function updateContextProgressBars() {
+            const wraps = document.querySelectorAll('[data-context-progress="1"]');
+            const now = Date.now();
+
+            wraps.forEach((wrap) => {
+                const bar = wrap.querySelector('[data-progress-bar="1"]');
+                const meta = wrap.querySelector('[data-progress-meta="1"]');
+                if (!bar || !meta) return;
+
+                const timeoutSec = parseInt(wrap.getAttribute('data-timeout') || '120', 10) || 120;
+                const startRaw = (wrap.getAttribute('data-start') || '').trim();
+                const startMs = startRaw ? Date.parse(startRaw) : NaN;
+
+                if (!Number.isFinite(startMs)) {
+                    bar.classList.add('indeterminate');
+                    meta.textContent = 'In progress...';
+                    return;
+                }
+
+                bar.classList.remove('indeterminate');
+                const elapsedSec = Math.max(0, Math.floor((now - startMs) / 1000));
+                const pct = Math.min(95, Math.max(8, Math.round((elapsedSec / timeoutSec) * 100)));
+                bar.style.width = `${pct}%`;
+
+                const mm = String(Math.floor(elapsedSec / 60)).padStart(2, '0');
+                const ss = String(elapsedSec % 60).padStart(2, '0');
+                meta.textContent = `Elapsed ${mm}:${ss} | Working...`;
+            });
+        }
+
+        function getSelectionWithinElement(el) {
+            if (!el) return "";
+            const selection = window.getSelection();
+            if (!selection || selection.rangeCount === 0) return "";
+            const selectedText = selection.toString().trim();
+            if (!selectedText) return "";
+
+            const range = selection.getRangeAt(0);
+            const node = range.commonAncestorContainer;
+            const container = node.nodeType === Node.TEXT_NODE ? node.parentElement : node;
+            if (!container || !el.contains(container)) return "";
+            return selectedText;
+        }
+
+        function cacheSelection(id, section) {
+            const key = `text-${id}-${section}`;
+            const textEl = document.getElementById(key);
+            const selectedText = getSelectionWithinElement(textEl);
+            if (!selectedText) return;
+            lastSelectionByTarget[key] = {
+                text: selectedText,
+                timestamp: Date.now()
+            };
+        }
+
+        function reportMissed(id, section) {
+            const key = `text-${id}-${section}`;
+            const textEl = document.getElementById(key);
+            const sectionText = textEl ? textEl.innerText.trim() : "";
+            const selectedNow = getSelectionWithinElement(textEl);
+            const cached = lastSelectionByTarget[key] || null;
+
+            let wrong = selectedNow || (cached ? cached.text : "");
+            if (wrong.length > 160) {
+                const useLong = confirm("Selected text is quite long. Use it as the missed error?");
+                if (!useLong) wrong = "";
+            }
+
+            if (!wrong) {
+                wrong = (prompt("Select the missed word/phrase in the headline/body first, then click Report Missed.\n\nOr type it here.") || "").trim();
+            }
+
+            if (!wrong) return;
+
+            const correction = (prompt("What should it be instead? (optional)") || "").trim();
+
+            fetch("/report_missed", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    id: id,
+                    section: section,
+                    wrong: wrong,
+                    correction: correction,
+                    text: sectionText
+                })
+            })
+            .then((res) => res.json())
+            .then((data) => {
+                if (!data.ok) {
+                    alert(data.error || "Could not save missed error report.");
+                    return;
+                }
+                alert("Saved. I will flag this next time it appears.");
+            })
+            .catch(() => alert("Could not save missed error report."));
+        }
+
+        function dismissSingle(id, section, issueKey = null, saveTerm = false) {
+            fetch("/dismiss", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ id: id, section: section, issue_key: issueKey, save_term: saveTerm })
+            }).then(() => {
+                loadSafeTerms();
+                refreshDashboard(0, true);
+            });
+        }
+
+        function dismissAll() {
+            fetch("/dismiss", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ save_term: false })
+            }).then(() => {
+                loadSafeTerms();
+                refreshDashboard(0, true);
+            });
+        }
+    </script>
+</body>
+</html>
